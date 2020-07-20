@@ -48,6 +48,12 @@ namespace f4mp
 			}
 
 			template<class T>
+			void Read(T& value)
+			{
+				_Read(&value, sizeof(T));
+			}
+
+			template<class T>
 			void Write(const T& value)
 			{
 				_Write(&value, sizeof(T));
@@ -78,22 +84,12 @@ namespace f4mp
 
 		public:
 			using Type = uint32_t;
-
 			using ID = uint32_t;
-
 			using InstantiationID = int32_t;
 
-			enum : Type
-			{
-				ClientType = 0
-			};
+			enum : Type { ClientType = 0 };
+			enum : ID { InvalidID = (ID)-1 };
 
-			enum : ID
-			{
-				InvalidID = (ID)-1
-			};
-
-		protected:
 			struct _Interface
 			{
 				ID id;
@@ -147,10 +143,13 @@ namespace f4mp
 			virtual void RegisterMessage(Event::Type messageType) = 0;
 			virtual void UnregisterMessage(Event::Type messageType) = 0;
 
+			virtual Entity* GetEntityByID(Entity::ID id) = 0;
+
 			virtual void Create(Entity* entity);
 
 		protected:
-			virtual Entity::_Interface* GetEntityInterface() = 0;
+			virtual Entity::_Interface* CreateEntityInterface() = 0;
+			Entity::_Interface* GetEntityInterface(Entity& entity);
 
 			Entity* Instantiate(Entity::InstantiationID instantiationID, Entity::ID entityID, Entity::Type entityType);
 

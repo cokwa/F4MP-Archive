@@ -19,7 +19,7 @@ void f4mp::networking::Networking::Create(Entity* entity)
 		throw std::runtime_error("entity already created.");
 	}
 
-	entity->_interface = GetEntityInterface();
+	entity->_interface = CreateEntityInterface();
 
 	Entity::InstantiationID instantiationID = 0;
 
@@ -29,6 +29,11 @@ void f4mp::networking::Networking::Create(Entity* entity)
 	}
 
 	entityInstantiationQueue[instantiationID] = entity;
+}
+
+f4mp::networking::Entity::_Interface* f4mp::networking::Networking::GetEntityInterface(Entity& entity)
+{
+	return entity._interface;
 }
 
 f4mp::networking::Entity* f4mp::networking::Networking::Instantiate(Entity::InstantiationID instantiationID, Entity::ID entityID, Entity::Type entityType)
@@ -49,6 +54,7 @@ f4mp::networking::Entity* f4mp::networking::Networking::Instantiate(Entity::Inst
 	else
 	{
 		entity = instantiate(entityType);
+		entity->_interface = CreateEntityInterface();
 	}
 
 	entity->_interface->id = entityID;

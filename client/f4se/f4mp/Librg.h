@@ -9,7 +9,6 @@ namespace f4mp
 	namespace librg
 	{
 		class Librg;
-		class Entity;
 
 		namespace details
 		{
@@ -21,6 +20,17 @@ namespace f4mp
 			private:
 				void _Read(void* value, size_t size) override;
 				void _Write(const void* value, size_t size) override;
+			};
+
+			struct _EntityInterface : public networking::Entity::_Interface
+			{
+				_EntityInterface(Librg& librg) : _interface(nullptr), librg(librg) {}
+
+				void SendMessage(networking::Event::Type messageType, const networking::EventCallback& callback, const networking::MessageOptions& options) override;
+
+				librg_entity* _interface;
+
+				Librg& librg;
 			};
 		}
 
@@ -60,7 +70,7 @@ namespace f4mp
 
 		class MessageData : public details::_Event
 		{
-			friend Entity;
+			friend details::_EntityInterface;
 
 		public:
 			Type GetType() const override;
@@ -78,28 +88,11 @@ namespace f4mp
 			networking::Networking& GetNetworking() override;
 		};
 
-		class Entity : public networking::Entity
-		{
-			friend Librg;
-
-		private:
-			~Entity();
-
-			struct _Interface : public networking::Entity::_Interface
-			{
-				_Interface(Librg& librg) : librg(librg) {}
-
-				void SendMessage(Event::Type messageType, const networking::EventCallback& callback, const networking::MessageOptions& options) override;
-
-				Librg& librg;
-			};
-		};
-
 		class Librg : public networking::Networking
 		{
 			friend Event;
 			friend Message;
-			friend Entity;
+			friend details::_EntityInterface;
 
 		public:
 			Librg(bool server = true);
@@ -115,12 +108,16 @@ namespace f4mp
 			void RegisterMessage(Event::Type messageType) override;
 			void UnregisterMessage(Event::Type messageType) override;
 
+			networking::Entity* GetEntityByID(networking::Entity::ID id) override;
+
 		private:
 			librg_ctx* ctx;
 
-			Entity::_Interface* GetEntityInterface() override;
+			details::_EntityInterface* CreateEntityInterface() override;
 
 			static Librg& This(librg_ctx* ctx);
+
+			static networking::Entity& GetEntity(librg_entity* _interface);
 
 			static void OnConnectionRequest(librg_event* event);
 			static void OnConnectionAccept(librg_event* event);
