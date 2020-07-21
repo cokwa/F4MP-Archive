@@ -12,7 +12,7 @@ extern "C"
 {
 	const char* F4MP_GetVersion()
 	{
-		return F4MP_VERSION;
+		return f4mp::F4MP::version.c_str();
 	}
 
 	bool F4SEPlugin_Query(const F4SEInterface* f4se, PluginInfo* info)

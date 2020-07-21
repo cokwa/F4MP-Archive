@@ -99,6 +99,12 @@ f4mp::librg::Librg::Librg(bool server) : ctx(nullptr)
 	librg_event_add(ctx, LIBRG_CONNECTION_REQUEST, OnConnectionRequest);
 	librg_event_add(ctx, LIBRG_CONNECTION_ACCEPT, OnConnectionAccept);
 	librg_event_add(ctx, LIBRG_CONNECTION_REFUSE, OnConnectionRefuse);
+
+	librg_event_add(ctx, LIBRG_ENTITY_CREATE, OnEntityCreate);
+	librg_event_add(ctx, LIBRG_ENTITY_REMOVE, OnEntityRemove);
+
+	librg_event_add(ctx, LIBRG_ENTITY_UPDATE, OnEntityUpdate);
+	librg_event_add(ctx, LIBRG_CLIENT_STREAMER_UPDATE, OnClientStreamerUpdate);
 }
 
 f4mp::librg::Librg::~Librg()
@@ -112,6 +118,8 @@ f4mp::librg::Librg::~Librg()
 
 void f4mp::librg::Librg::Start(const std::string& address, int32_t port)
 {
+	Networking::Start(address, port);
+
 	Stop();
 
 	std::string hostAddress = address;
@@ -187,7 +195,7 @@ f4mp::networking::Entity& f4mp::librg::Librg::GetEntity(librg_entity* _interface
 {
 	if (_interface == nullptr || _interface->user_data == nullptr)
 	{
-		throw std::runtime_error("no entity in interface");
+		throw std::runtime_error("interface has no entity");
 	}
 
 	return *static_cast<networking::Entity*>(_interface->user_data);
@@ -202,7 +210,16 @@ void f4mp::librg::Librg::OnConnectionRequest(librg_event* event)
 void f4mp::librg::Librg::OnConnectionAccept(librg_event* event)
 {
 	Event eventObj(event);
+
 	This(event->ctx).onConnectionAccept(eventObj);
+
+	networking::Entity* entity = This(event->ctx).Instantiate(-1, event->entity->id, event->entity->type);
+
+	details::_EntityInterface* _interface = static_cast<details::_EntityInterface*>(This(event->ctx).GetEntityInterface(*entity));
+	_interface->_interface = event->entity;
+	_interface->_interface->user_data = static_cast<void*>(entity);
+
+	entity->OnCreate(eventObj);
 }
 
 void f4mp::librg::Librg::OnConnectionRefuse(librg_event* event)
@@ -229,19 +246,35 @@ void f4mp::librg::Librg::OnEntityCreate(librg_event* event)
 void f4mp::librg::Librg::OnEntityUpdate(librg_event* event)
 {
 	Event eventObj(event);
-	GetEntity(event->entity).OnServerUpdate(eventObj);
+
+	networking::Entity& entity = GetEntity(event->entity);
+	entity.position = reinterpret_cast<networking::Vector3&>(event->entity->position);
+
+	entity.OnServerUpdate(eventObj);
 }
 
 void f4mp::librg::Librg::OnEntityRemove(librg_event* event)
 {
 	Event eventObj(event);
-	GetEntity(event->entity).OnDestroy(eventObj);
+
+	networking::Entity* entity = &GetEntity(event->entity);
+	entity->OnDestroy(eventObj);
+	delete entity;
 }
 
 void f4mp::librg::Librg::OnClientStreamerUpdate(librg_event* event)
 {
 	Event eventObj(event);
-	GetEntity(event->entity).OnClientUpdate(eventObj);
+
+	networking::Entity& entity = GetEntity(event->entity);
+	
+	// could write anything but why not
+	librg_data_wptr_at(event->data, &entity.rotation, sizeof(entity.rotation), 0);
+
+	entity.OnClientUpdate(eventObj);
+
+	event->entity->position = reinterpret_cast<zpl_vec3&>(entity.position);
+	librg_data_wptr_at(event->data, &entity.rotation, sizeof(entity.rotation), 0);
 }
 
 void f4mp::librg::Librg::OnMessageReceive(librg_message* message)

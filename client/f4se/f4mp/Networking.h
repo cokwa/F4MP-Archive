@@ -24,7 +24,7 @@ namespace f4mp
 		{
 			float x, y, z, w;
 
-			Quaternion() : x(0.f), y(0.f), z(0.f) {}
+			Quaternion() : x(0.f), y(0.f), z(0.f), w(0.f) {}
 		};
 
 		class Event
@@ -104,7 +104,7 @@ namespace f4mp
 			Quaternion rotation;
 
 			Entity() : _interface(nullptr) {}
-			virtual ~Entity() {}
+			virtual ~Entity();
 
 			virtual void OnCreate(Event& event) {}
 			virtual void OnDestroy(Event& event) {}
@@ -133,7 +133,7 @@ namespace f4mp
 
 			virtual ~Networking() {}
 
-			virtual void Start(const std::string& address, int32_t port) = 0;
+			virtual void Start(const std::string& address, int32_t port);
 			virtual void Stop() = 0;
 
 			virtual void Tick() = 0;
@@ -152,7 +152,7 @@ namespace f4mp
 			Entity::_Interface* GetEntityInterface(Entity& entity);
 
 			Entity* Instantiate(Entity::InstantiationID instantiationID, Entity::ID entityID, Entity::Type entityType);
-
+			
 		private:
 			std::unordered_map<Entity::InstantiationID, Entity*> entityInstantiationQueue;
 		};

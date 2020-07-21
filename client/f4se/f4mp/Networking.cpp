@@ -12,6 +12,38 @@ void f4mp::networking::Entity::SendMessage(Event::Type messageType, const EventC
 	_interface->SendMessage(messageType, callback, options);
 }
 
+f4mp::networking::Entity::~Entity()
+{
+	if (_interface != nullptr)
+	{
+		delete _interface;
+		_interface = nullptr;
+	}
+}
+
+void f4mp::networking::Networking::Start(const std::string& address, int32_t port)
+{
+	if (!instantiate)
+	{
+		throw std::runtime_error("empty instantiate");
+	}
+
+	if (!onConnectionRequest)
+	{
+		throw std::runtime_error("empty onConnectionRequest");
+	}
+
+	if (!onConnectionAccept)
+	{
+		throw std::runtime_error("empty onConnectionAccept");
+	}
+
+	if (!onConnectionRefuse)
+	{
+		throw std::runtime_error("empty onConnectionRefuse");
+	}
+}
+
 void f4mp::networking::Networking::Create(Entity* entity)
 {
 	if (entity->_interface != nullptr)
@@ -45,7 +77,7 @@ f4mp::networking::Entity* f4mp::networking::Networking::Instantiate(Entity::Inst
 		auto entityInstantiation = entityInstantiationQueue.find(instantiationID);
 		if (entityInstantiation == entityInstantiationQueue.end())
 		{
-			throw "invalid instantiation id";
+			throw std::runtime_error("invalid instantiation id");
 		}
 
 		entity = entityInstantiation->second;

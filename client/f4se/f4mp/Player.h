@@ -29,4 +29,10 @@ namespace f4mp
 		
 		Connection connection;
 	};
+
+	class Player : public Character
+	{
+	public:
+		Player();
+	};
 }
