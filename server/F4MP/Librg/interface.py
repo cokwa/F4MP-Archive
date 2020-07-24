@@ -60,5 +60,5 @@ class Interface:
             Exception: Starting the network failed.
         """
 
-        if bool(ret := self.dll.librg_network_start(ctx, Address(port, address))):
-            raise Exception(f"Network Start Failed, return {ret}")  # TODO: Use custom exception class
+        if bool(self.dll.librg_network_start(ctx, Address(port, address))):
+            raise Exception(f"Network Start Failed")  # TODO: Use custom exception class
