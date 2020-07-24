@@ -1,2 +1,1 @@
-from .server import Server
-from .classes import *
+from .classes import Server

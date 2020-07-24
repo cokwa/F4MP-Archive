@@ -1,3 +1,5 @@
+"""Librg Classes
+These should not be accessed directly and instead casted to proper objects."""
 import ctypes
 
 
@@ -8,7 +10,7 @@ class Peer(ctypes.Structure):
             ("address_host", ctypes.c_byte * 16)
         ]
     _fields_ = [
-        ("dispatchList", ctypes.c_byte * 16),
+        ("dispatch_list", ctypes.c_byte * 16),
         ("host", ctypes.POINTER(Host)),
     ]
 
@@ -131,7 +133,7 @@ class Message(ctypes.Structure):
         ("ctx", ctypes.POINTER(Context)),
         ("data", ctypes.POINTER(Data)),
 
-        ("peer", ctypes.c_void_p),
+        ("peer", ctypes.POINTER(Peer)),
         ("packet", ctypes.c_void_p),
 
         ("user_data", ctypes.c_void_p),
