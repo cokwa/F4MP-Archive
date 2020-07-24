@@ -24,15 +24,19 @@ class Peer(F4MPAbc):
 
             return self
 
-    __slots__ = ("_dispatch_list", "host")
+    __slots__ = ("_dispatch_list", "_host_ptr")
 
     @classmethod
     def from_struct(cls, data):
         self = cls.__new__(cls)
         self._dispatch_list = data.dispatch_list
-        self.host(Peer.Host.from_struct(data.host.contents))
+        self._host_ptr = data.host
 
         return self
+
+    @property
+    def host(self):
+        return Peer.Host.from_struct(self.host.contents)
 
 
 class Data(F4MPAbc):
@@ -52,8 +56,8 @@ class Data(F4MPAbc):
 
 class Entity:
     __slots__ = ("id", "type", "flags", "position", "stream_range", "_user_data", "_stream_branch",
-                 "_visibility", "virtual_world", "_last_snapshot", "client_peer", "control_peer",
-                 "control_generation", "last_query")
+                 "_visibility", "virtual_world", "_last_snapshot", "_client_peer_ptr", "_control_peer_ptr",
+                 "control_generation", "_last_query_ptr")
 
     @classmethod
     def from_struct(cls, data):
@@ -64,22 +68,32 @@ class Entity:
         self.position = list(map(lambda x: float(x), data.position))
         self.stream_range = float(data.stream_range)
         self.virtual_world = int(data.virtual_world)
-        self.client_peer = Peer.from_struct(data.client_peer.contents)
-        self.control_peer = Peer.from_struct(data.control_peer.contents)
+        self._client_peer_ptr = data.client_peer
+        self._control_peer_ptr = data.control_peer
         self.control_generation = int(data.control_generation)
-        self.last_query = int(data.last_query.contents)
+        self._last_query_ptr = data.last_query
 
         for attr in ("user_data", "stream_branch", "visibility", "last_snapshot"):
             try:
-                value = data.__getattr__(attr)
-                if isinstance(value, ctypes.pointer):
-                    value = value.contents
+                value = getattr(self, attr)
             except KeyError:
                 continue
             else:
                 setattr(self, "_" + attr, value)
 
         return self
+
+    @property
+    def client_peer(self):
+        return Peer.from_struct(self._client_peer_ptr.contents)
+
+    @property
+    def control_peer(self):
+        return Peer.from_struct(self._control_peer_ptr.contents)
+
+    @property
+    def last_query(self):
+        return int(self._last_query_ptr.contents)
 
 
 class Address(F4MPAbc):
@@ -110,19 +124,19 @@ class _StreamsSubC(F4MPAbc):
 
 class Context(F4MPAbc):
     class Network(F4MPAbc):
-        __slots__ = ("peer", "host", "connected_peers", "last_address", "created", "connected")
+        __slots__ = ("_peer_ptr", "host", "connected_peers", "last_address", "created", "connected")
 
         @classmethod
         def from_struct(cls, data):
             self = cls.__new__(cls)
-            self.peer = Peer.from_struct(data.peer.content)
+            self._peer_ptr = data.peer
             self.last_address = Address.from_struct(data.last_address)
             self.created = int(data.created)
             self.connected = int(data.connected)
 
             for attr in ("host", "connected_peers", "created", "connected"):
                 try:
-                    value = data.__getattr__(attr)
+                    value = getattr(self, attr)
                 except KeyError:
                     continue
                 else:
@@ -130,27 +144,33 @@ class Context(F4MPAbc):
 
             return self
 
+        @property
+        def peer(self):
+            return Peer.from_struct(self._peer_ptr.content)
+
     class Entity(F4MPAbc):
-        __slots__ = ("count", "cursor", "_visibility", "list", "remove_queue", "_add_control_queue")
+        __slots__ = ("count", "cursor", "_visibility", "_list_ptr", "remove_queue", "_add_control_queue")
 
         @classmethod
         def from_struct(cls, data):
             self = cls.__new__(cls)
             self.count = int(data.count)
             self.cursor = int(data.cursor)
-            self.list = Entity.from_struct(data.list.contents)
+            self._list_ptr = data.list
             self.remove_queue = int(data.remove_queue.contents)
 
             for attr in ("visibility", "add_control_queue"):
                 try:
-                    value = data.__getattr__(attr)
-                    if isinstance(value, ctypes.pointer):
-                        value = value.contents
+                    value = getattr(self, attr)
                 except KeyError:
                     continue
                 else:
                     setattr(self, "_" + attr, value)
             return self
+
+        @property
+        def list(self):
+            return Entity.from_struct(self._list_ptr.contents)
 
     class Streams(F4MPAbc):
         __slots__ = ("struct", "streams")
@@ -186,9 +206,7 @@ class Context(F4MPAbc):
         for attr in ("user_data", "timesync", "buffer_timer", "buffer",
                      "messages", "allocator", "timers", "events", "world"):
             try:
-                value = data.__getattr__(attr)
-                if isinstance(value, ctypes.pointer):
-                    value = value.contents
+                value = getattr(self, attr)
             except KeyError:
                 continue
             else:
@@ -199,7 +217,7 @@ class Context(F4MPAbc):
 
 class Event(F4MPAbc):
     __slots__ = (
-        "id", "ctx", "data", "entity", "peer", "_flags", "_user_data"
+        "id", "_ctx_ptr", "_data_ptr", "_entity_ptr", "_peer_ptr", "_flags", "_user_data"
     )
 
     @classmethod
@@ -208,16 +226,14 @@ class Event(F4MPAbc):
 
         self.id = data.id
         self.type = Enum.reverse[data.id]
-        self.ctx = Context.from_struct(data.ctx.content)
-        self.data = Data.from_struct(data.data.content)
-        self.entity = Entity.from_struct(data.entity.content)
-        self.peer = Peer.from_struct(data.peer.content)
+        self._ctx_ptr = data.ctx
+        self._data_ptr = data.data
+        self._entity_ptr = data.entity
+        self._peer_ptr = data.peer
 
         for attr in ("flags", "user_data"):
             try:
-                value = data.__getattr__(attr)
-                if isinstance(value, ctypes.pointer):
-                    value = value.contents
+                value = getattr(data, attr)
             except KeyError:
                 continue
             else:
@@ -225,10 +241,26 @@ class Event(F4MPAbc):
 
         return self
 
+    @property
+    def ctx(self):
+        return Context.from_struct(self._ctx_ptr.contents)
+
+    @property
+    def data(self):
+        return Data.from_struct(self._data_ptr.contents)
+
+    @property
+    def entity(self):
+        return Entity.from_struct(self._entity_ptr.contents)
+
+    @property
+    def peer(self):
+        return Peer.from_struct(self._peer_ptr.content)
+
 
 class Message(F4MPAbc):
     __slots__ = (
-        "id", "ctx", "data", "peer", "_packet", "_user_data"
+        "id", "_ctx_ptr", "_data_ptr", "_peer_ptr", "_packet", "_user_data"
     )
 
     @classmethod
@@ -236,18 +268,37 @@ class Message(F4MPAbc):
         self = cls.__new__(cls)
 
         self.id = int(data.id)
-        self.ctx = Context.from_struct(data.ctx.content)
-        self.data = Data.from_struct(data.data.content)
-        self.peer = Peer.from_struct(data.peer.content)
+        self._ctx_ptr = data.ctx
+        self._data_ptr = data.data
+        self._peer_ptr = data.peer
 
         for attr in ("packet", "user_data"):
             try:
-                value = data.__getattr__(attr)
-                if isinstance(value, ctypes.pointer):
-                    value = value.contents
+                value = getattr(self, attr)
             except KeyError:
                 continue
             else:
                 setattr(self, "_" + attr, value)
 
         return self
+
+    @property
+    def ctx(self):
+        try:
+            return Context.from_struct(self._ctx_ptr.contents)
+        except ValueError:
+            return None
+
+    @property
+    def data(self):
+        try:
+            return Data.from_struct(self._data_ptr.contents)
+        except ValueError:
+            return None
+
+    @property
+    def peer(self):
+        try:
+            return Peer.from_struct(self._peer_ptr.contents)
+        except ValueError:
+            return None
